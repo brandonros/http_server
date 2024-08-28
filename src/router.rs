@@ -5,7 +5,7 @@ use crate::{request_handler::RequestHandler, types::Result};
 
 #[derive(Default)]
 pub struct Router {
-    routes: HashMap<String, Box<dyn RequestHandler + Send + Sync>>,
+    routes: HashMap<String, Box<dyn RequestHandler>>,
 }
 
 impl Router {
@@ -17,7 +17,7 @@ impl Router {
 
     pub fn add_route<H>(&mut self, method: &str, path: &str, handler: H)
     where
-        H: RequestHandler + Send + Sync + 'static,
+        H: RequestHandler + 'static,
     {
         let key = format!("{method}:{path}");
         self.routes.insert(key, Box::new(handler));
