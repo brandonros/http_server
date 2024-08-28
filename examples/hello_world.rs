@@ -24,7 +24,7 @@ fn main() -> Result<()> {
 
     // build router
     let mut router = Router::new();
-    router.add_route("GET", "/", Arc::new(move |req: Request<()>| Box::pin(get_index(req)))); // TODO: get rid of this non-async wrapper?
+    router.add_route("GET", "/", Arc::new(move |req| Box::pin(get_index(req)))); // TODO: get rid of this non-async wrapper?
     let router = Arc::new(router);
 
     // run server
