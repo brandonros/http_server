@@ -11,7 +11,6 @@ use futures_lite as futures_provider;
 
 pub mod router;
 mod types;
-mod request_handler;
 
 use async_io::Async;
 use futures_provider::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};

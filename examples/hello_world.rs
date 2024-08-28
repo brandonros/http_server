@@ -24,7 +24,7 @@ fn main() -> Result<()> {
 
     // build router
     let mut router = Router::new();
-    router.add_route("GET", "/", get_index);
+    router.add_route("GET", "/", Arc::new(move |req: Request<()>| Box::pin(get_index(req))));
     let router = Arc::new(router);
 
     // run server
