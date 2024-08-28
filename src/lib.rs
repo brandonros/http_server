@@ -13,6 +13,7 @@ pub mod router;
 mod types;
 
 use async_io::Async;
+use async_executor::Executor;
 use futures_provider::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use http::{Method, Request, Uri, Version};
 use std::{
@@ -106,7 +107,7 @@ impl HttpServer {
         Ok(())
     }
 
-    pub async fn run_server(host: &str, port: u16, router: Arc<Router>) -> Result<()> {
+    pub async fn run_server(executor: &Arc<Executor<'static>>, host: &str, port: u16, router: Arc<Router>) -> Result<()> {
         // bind listener
         let addr = format!("{host}:{port}")
             .to_socket_addrs()?
@@ -117,7 +118,23 @@ impl HttpServer {
         // handle request
         loop {
             let (stream, _) = listener.accept().await?;
-            Self::handle_request(router.clone(), stream).await?;
+            log::info!("accepted new connection");
+
+            // Spawn a task to handle each client connection
+            let task = executor.spawn({
+                let router = router.clone();
+                async move {
+                    match Self::handle_request(router, stream).await {
+                        Ok(()) => (),
+                        Err(err) => {
+                            log::error!("error handling request err = {err:?}");
+                        },
+                    }
+                }
+            });
+
+            // run in background
+            task.detach();
         }
     }
 }
