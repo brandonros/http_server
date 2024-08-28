@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use http::{Request, Response, StatusCode, Version};
 use http_server::{router::Router, HttpServer};
+use async_executor::Executor;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -13,7 +14,8 @@ async fn get_index(_request: Request<()>) -> Result<Response<String>> {
     .body("Hello, World!".to_string())?)
 }
 
-fn main() -> Result<()> {
+#[macro_rules_attribute::apply(smol_macros::main!)]
+async fn main(ex: &Arc<Executor<'static>>) -> Result<()> {
     // logging
     let logging_env = env_logger::Env::default().default_filter_or("debug");
     env_logger::Builder::from_env(logging_env).init();
@@ -28,5 +30,5 @@ fn main() -> Result<()> {
     let router = Arc::new(router);
 
     // run server
-    futures_lite::future::block_on(HttpServer::run_server(host, port, router))
+    HttpServer::run_server(ex, host, port, router).await
 }
