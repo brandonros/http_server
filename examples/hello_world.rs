@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use http::{Request, Response, StatusCode, Version};
-use http_server::{router::Router, HttpServer};
+use http_server::{Router, HttpServer};
 use async_executor::Executor;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
