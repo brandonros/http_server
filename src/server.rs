@@ -1,6 +1,6 @@
 use async_io::Async;
 use async_executor::Executor;
-use futures_lite::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
+use futures_lite::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, AsyncReadExt};
 use http::{Method, Request, Uri, Version};
 use std::{
     net::{TcpListener, ToSocketAddrs},
@@ -16,7 +16,7 @@ pub struct HttpServer;
 impl HttpServer {
     async fn read_http_request<S: AsyncRead + AsyncWrite + Unpin>(
         stream: &mut S,
-    ) -> Result<Request<()>> {
+    ) -> Result<Request<Vec<u8>>> {
         // Wrap the stream with a BufReader for efficient reading
         let mut reader = BufReader::new(stream);
 
@@ -62,8 +62,27 @@ impl HttpServer {
             request_builder = request_builder.header(key.trim(), value.trim());
         }
 
-        // Build the request without a body (`()`)
-        let request = request_builder.body(())?;
+        // Extract the Content-Length header if it exists
+        let mut request_body = Vec::new();
+        if let Some(length) = request_builder
+            .headers_ref()
+            .and_then(|headers| headers.get("content-length")) // TODO: case-sensitive?
+        {
+            let length = length
+                .to_str()
+                .map_err(|_| "Invalid Content-Length header")?
+                .parse::<usize>()
+                .map_err(|_| "Content-Length is not a valid number")?;
+
+            // Read the specified number of bytes from the request body
+            request_body.resize(length, 0);
+            reader.read_exact(&mut request_body).await?;
+        }
+
+        // TODO: support more request body types like chunked, multipart, etc.
+
+        // Build the request with the body
+        let request = request_builder.body(request_body)?;
 
         Ok(request)
     }
