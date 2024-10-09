@@ -6,7 +6,7 @@ use async_executor::Executor;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-async fn get_index(_request: Request<()>) -> Result<Response<String>> {
+async fn get_index(_request: Request<Vec<u8>>) -> Result<Response<String>> {
     Ok(Response::builder()
     .status(StatusCode::OK)
     .version(Version::HTTP_11)

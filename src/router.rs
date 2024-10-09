@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use http::{Request, Response, StatusCode, Version};
 use crate::types::{BoxFuture, Result};
 
-pub type RouteHandler = dyn Fn(Request<()>) -> BoxFuture<'static, Result<Response<String>>> + Send + Sync;
+pub type RouteHandler = dyn Fn(Request<Vec<u8>>) -> BoxFuture<'static, Result<Response<String>>> + Send + Sync;
 
 #[derive(Default)]
 pub struct Router {
@@ -22,7 +22,7 @@ impl Router {
         self.routes.insert(key, handler);
     }
 
-    pub async fn route(&self, request: Request<()>) -> Result<Response<String>> {
+    pub async fn route(&self, request: Request<Vec<u8>>) -> Result<Response<String>> {
         let method = request.method().as_str();
         let path = request.uri().to_string();
         let key = format!("{method}:{path}");
