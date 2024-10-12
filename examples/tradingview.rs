@@ -1,7 +1,7 @@
 use std::{error::Error, sync::Arc};
 
 use http::{Request, Response, StatusCode, Version};
-use http_server::{Router, HttpServer};
+use http_server::{HttpServer, Router};
 use async_executor::Executor;
 use tradingview_client::{DefaultTradingViewMessageProcessor, TradingViewClient, TradingViewClientConfig, TradingViewMessageProcessor};
 
