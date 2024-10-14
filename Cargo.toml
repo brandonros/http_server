@@ -11,6 +11,8 @@ async-executor = "1.13.0"
 http = "1.0.0"
 # logging
 log = "0.4.20"
+# errors
+anyhow = "1.0.89"
 
 [dev-dependencies]
 # logging
@@ -18,7 +20,3 @@ env_logger = "0.11.5"
 # async macros
 smol-macros = "0.1.1"
 macro_rules_attribute = "0.2.0"
-# tradingview
-tradingview_client = { git = "https://github.com/brandonros/tradingview_client.git", rev = "3d9f49dfbbd41b0f7204b766b95793eb96af0c5e" }
-# json
-miniserde = "0.1.40"

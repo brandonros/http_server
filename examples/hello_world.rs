@@ -4,9 +4,7 @@ use http::{Request, Response, StatusCode, Version};
 use http_server::{Router, HttpServer};
 use async_executor::Executor;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
-async fn get_index(_request: Request<Vec<u8>>) -> Result<Response<String>> {
+async fn get_index(_executor: Arc<Executor<'static>>, _request: Request<Vec<u8>>) -> anyhow::Result<Response<String>> {
     Ok(Response::builder()
     .status(StatusCode::OK)
     .version(Version::HTTP_11)
@@ -15,7 +13,7 @@ async fn get_index(_request: Request<Vec<u8>>) -> Result<Response<String>> {
 }
 
 #[macro_rules_attribute::apply(smol_macros::main!)]
-async fn main(ex: &Arc<Executor<'static>>) -> Result<()> {
+async fn main(executor: Arc<Executor<'static>>) -> anyhow::Result<()> {
     // logging
     let logging_env = env_logger::Env::default().default_filter_or("debug");
     env_logger::Builder::from_env(logging_env).init();
@@ -25,10 +23,10 @@ async fn main(ex: &Arc<Executor<'static>>) -> Result<()> {
     let port = 3000;
 
     // build router
-    let mut router = Router::new();
-    router.add_route("GET", "/", Arc::new(move |req| Box::pin(get_index(req)))); // TODO: get rid of this non-async wrapper?
+    let mut router = Router::new(executor.clone());
+    router.add_route("GET", "/", Arc::new(move |executor, req| Box::pin(get_index(executor, req)))); // TODO: get rid of this non-async wrapper?
     let router = Arc::new(router);
 
     // run server
-    HttpServer::run_server(ex, host, port, router).await
+    HttpServer::run_server(executor, host, port, router).await
 }

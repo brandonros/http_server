@@ -1,18 +1,22 @@
 use std::{collections::HashMap, sync::Arc};
 
+use async_executor::Executor;
 use http::{Request, Response, StatusCode, Version};
-use crate::types::{BoxFuture, Result};
 
-pub type RouteHandler = dyn Fn(Request<Vec<u8>>) -> BoxFuture<'static, Result<Response<String>>> + Send + Sync;
+use crate::types::BoxFuture;
+
+pub type RouteHandler = dyn Fn(Arc<Executor<'static>>, Request<Vec<u8>>) -> BoxFuture<'static, anyhow::Result<Response<String>>> + Send + Sync;
 
 #[derive(Default)]
 pub struct Router {
+    executor: Arc<Executor<'static>>,
     routes: HashMap<String, Arc<RouteHandler>>,
 }
 
 impl Router {
-    pub fn new() -> Self {
+    pub fn new(executor: Arc<Executor<'static>>) -> Self {
         Self {
+            executor,
             routes: HashMap::new(),
         }
     }
@@ -22,13 +26,13 @@ impl Router {
         self.routes.insert(key, handler);
     }
 
-    pub async fn route(&self, request: Request<Vec<u8>>) -> Result<Response<String>> {
+    pub async fn route(&self, request: Request<Vec<u8>>) -> anyhow::Result<Response<String>> {
         let method = request.method().as_str();
         let path = request.uri().to_string();
         let key = format!("{method}:{path}");
         log::info!("request key = {key}");
         if let Some(handler) = self.routes.get(&key) {
-            match handler(request).await {
+            match handler(self.executor.clone(), request).await {
                 Ok(response) => {
                     Ok(response)
                 },
