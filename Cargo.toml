@@ -12,7 +12,7 @@ http = "1.0.0"
 # logging
 log = "0.4.20"
 # errors
-anyhow = "1.0.89"
+simple_error = { path = "../simple_error" }
 
 [dev-dependencies]
 # logging

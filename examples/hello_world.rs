@@ -3,8 +3,9 @@ use std::sync::Arc;
 use http::{Request, Response, StatusCode, Version};
 use http_server::{Router, HttpServer};
 use async_executor::Executor;
+use simple_error::SimpleResult;
 
-async fn get_index(_executor: Arc<Executor<'static>>, _request: Request<Vec<u8>>) -> anyhow::Result<Response<String>> {
+async fn get_index(_executor: Arc<Executor<'static>>, _request: Request<Vec<u8>>) -> SimpleResult<Response<String>> {
     Ok(Response::builder()
     .status(StatusCode::OK)
     .version(Version::HTTP_11)
@@ -13,7 +14,7 @@ async fn get_index(_executor: Arc<Executor<'static>>, _request: Request<Vec<u8>>
 }
 
 #[macro_rules_attribute::apply(smol_macros::main!)]
-async fn main(executor: Arc<Executor<'static>>) -> anyhow::Result<()> {
+async fn main(executor: Arc<Executor<'static>>) -> SimpleResult<()> {
     // logging
     let logging_env = env_logger::Env::default().default_filter_or("debug");
     env_logger::Builder::from_env(logging_env).init();

@@ -61,12 +61,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.89"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86fdf8605db99b54d3cd748a44c6d04df638eb5dafb219b135d0149bd0db01f6"
-
-[[package]]
 name = "async-executor"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -272,7 +266,6 @@ dependencies = [
 name = "http_server"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-executor",
  "async-io",
  "env_logger",
@@ -280,6 +273,7 @@ dependencies = [
  "http",
  "log",
  "macro_rules_attribute",
+ "simple_error",
  "smol-macros",
 ]
 
@@ -415,6 +409,10 @@ dependencies = [
  "linux-raw-sys",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "simple_error"
+version = "0.1.0"
 
 [[package]]
 name = "slab"

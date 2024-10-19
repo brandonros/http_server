@@ -2,10 +2,11 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_executor::Executor;
 use http::{Request, Response, StatusCode, Version};
+use simple_error::SimpleResult;
 
 use crate::types::BoxFuture;
 
-pub type RouteHandler = dyn Fn(Arc<Executor<'static>>, Request<Vec<u8>>) -> BoxFuture<'static, anyhow::Result<Response<String>>> + Send + Sync;
+pub type RouteHandler = dyn Fn(Arc<Executor<'static>>, Request<Vec<u8>>) -> BoxFuture<'static, SimpleResult<Response<String>>> + Send + Sync;
 
 #[derive(Default)]
 pub struct Router {
@@ -26,7 +27,7 @@ impl Router {
         self.routes.insert(key, handler);
     }
 
-    pub async fn route(&self, request: Request<Vec<u8>>) -> anyhow::Result<Response<String>> {
+    pub async fn route(&self, request: Request<Vec<u8>>) -> SimpleResult<Response<String>> {
         let method = request.method().as_str();
         let path = request.uri().to_string();
         let key = format!("{method}:{path}");

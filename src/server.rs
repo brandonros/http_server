@@ -2,6 +2,7 @@ use async_io::Async;
 use async_executor::Executor;
 use futures_lite::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, AsyncReadExt};
 use http::{Method, Request, Uri, Version};
+use simple_error::{box_err, SimpleResult};
 use std::{
     net::{TcpListener, ToSocketAddrs},
     str::FromStr,
@@ -15,7 +16,7 @@ pub struct HttpServer;
 impl HttpServer {
     async fn read_http_request<S: AsyncRead + AsyncWrite + Unpin>(
         stream: &mut S,
-    ) -> anyhow::Result<Request<Vec<u8>>> {
+    ) -> SimpleResult<Request<Vec<u8>>> {
         // Wrap the stream with a BufReader for efficient reading
         let mut reader = BufReader::new(stream);
 
@@ -25,9 +26,9 @@ impl HttpServer {
 
         // Parse the request line into components
         let mut parts = request_line.trim().split_whitespace();
-        let method = parts.next().ok_or(anyhow::anyhow!("Failed to parse method"))?;
-        let uri = parts.next().ok_or(anyhow::anyhow!("Failed to parse URI"))?;
-        let version = parts.next().ok_or(anyhow::anyhow!("Failed to parse version"))?;
+        let method = parts.next().ok_or(box_err!("Failed to parse method"))?;
+        let uri = parts.next().ok_or(box_err!("Failed to parse URI"))?;
+        let version = parts.next().ok_or(box_err!("Failed to parse version"))?;
 
         // Convert components into appropriate types for Request
         let method = Method::from_str(method)?;
@@ -36,7 +37,7 @@ impl HttpServer {
             "HTTP/1.0" => Version::HTTP_10,
             "HTTP/1.1" => Version::HTTP_11,
             "HTTP/2.0" => Version::HTTP_2,
-            _ => return Err(anyhow::anyhow!("Unsupported HTTP version")),
+            _ => return Err(box_err!("Unsupported HTTP version")),
         };
 
         // Create a new request builder
@@ -54,8 +55,8 @@ impl HttpServer {
 
             // Split the header into key and value
             let mut header_parts = header_line.trim().splitn(2, ':');
-            let key = header_parts.next().ok_or(anyhow::anyhow!("Failed to parse header key"))?;
-            let value = header_parts.next().ok_or(anyhow::anyhow!("Failed to parse header value"))?;
+            let key = header_parts.next().ok_or(box_err!("Failed to parse header key"))?;
+            let value = header_parts.next().ok_or(box_err!("Failed to parse header value"))?;
 
             // Add the header to the request builder
             request_builder = request_builder.header(key.trim(), value.trim());
@@ -69,9 +70,9 @@ impl HttpServer {
         {
             let length = length
                 .to_str()
-                .map_err(|_| anyhow::anyhow!("Invalid Content-Length header"))?
+                .map_err(|_| box_err!("Invalid Content-Length header"))?
                 .parse::<usize>()
-                .map_err(|_| anyhow::anyhow!("Content-Length is not a valid number"))?;
+                .map_err(|_| box_err!("Content-Length is not a valid number"))?;
 
             // Read the specified number of bytes from the request body
             request_body.resize(length, 0);
@@ -89,7 +90,7 @@ impl HttpServer {
     async fn handle_request<S: AsyncRead + AsyncWrite + Unpin>(
         router: Arc<Router>,
         mut stream: S,
-    ) -> anyhow::Result<()> {
+    ) -> SimpleResult<()> {
         // read request
         let request = Self::read_http_request(&mut stream).await?;
 
@@ -111,12 +112,12 @@ impl HttpServer {
         Ok(())
     }
 
-    pub async fn run_server(executor: Arc<Executor<'static>>, host: &str, port: u16, router: Arc<Router>) -> anyhow::Result<()> {
+    pub async fn run_server(executor: Arc<Executor<'static>>, host: &str, port: u16, router: Arc<Router>) -> SimpleResult<()> {
         // bind listener
         let addr = format!("{host}:{port}")
             .to_socket_addrs()?
             .next()
-            .ok_or(anyhow::anyhow!("Failed to build host"))?;
+            .ok_or(box_err!("Failed to build host"))?;
         let listener = Async::<TcpListener>::bind(addr)?;
 
         // handle request
