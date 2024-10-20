@@ -12,7 +12,7 @@ http = "1.0.0"
 # logging
 log = "0.4.20"
 # errors
-simple_error = { path = "../simple_error" }
+simple_error = { git = "https://github.com/brandonros/simple_error.git" }
 
 [dev-dependencies]
 # logging
