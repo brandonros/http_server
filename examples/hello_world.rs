@@ -4,6 +4,7 @@ use http::{Request, Response, StatusCode, Version};
 use http_server::{Router, HttpServer};
 use async_executor::Executor;
 use simple_error::SimpleResult;
+use smol::MainExecutor;
 
 async fn get_index(_executor: Arc<Executor<'static>>, _request: Request<Vec<u8>>) -> SimpleResult<Response<String>> {
     Ok(Response::builder()
@@ -13,15 +14,13 @@ async fn get_index(_executor: Arc<Executor<'static>>, _request: Request<Vec<u8>>
     .body("Hello, World!".to_string())?)
 }
 
-#[macro_rules_attribute::apply(smol_macros::main!)]
-async fn main(executor: Arc<Executor<'static>>) -> SimpleResult<()> {
+async fn async_main(executor: Arc<Executor<'static>>) -> SimpleResult<()> {
     // logging
-    let logging_env = env_logger::Env::default().default_filter_or("debug");
-    env_logger::Builder::from_env(logging_env).init();
+    env_logger::init();
 
     // settings
-    let host = "127.0.0.1";
-    let port = 3000;
+    let host = "0.0.0.0";
+    let port = 8080;
 
     // build router
     let mut router = Router::new(executor.clone());
@@ -31,3 +30,8 @@ async fn main(executor: Arc<Executor<'static>>) -> SimpleResult<()> {
     // run server
     HttpServer::run_server(executor, host, port, router).await
 }
+
+fn main() -> SimpleResult<()> {
+    Arc::<Executor>::with_main(|ex| smol::block_on(async_main(ex.clone())))
+}
+
