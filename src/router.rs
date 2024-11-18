@@ -22,10 +22,11 @@ impl Router {
         }
     }
 
-    pub fn add_routes(&mut self, routes: Vec<(Method, &str, Arc<RouteHandler>)>) {
+    pub fn add_routes(&mut self, routes: Vec<(Method, &str, Arc<RouteHandler>)>) -> &Self {
         for (method, path, handler) in routes {
             self.add_route(method, path, handler);
         }
+        self
     }
 
     pub fn add_route(&mut self, method: Method, path: &str, handler: Arc<RouteHandler>) {
