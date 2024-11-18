@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use http::{Request, Response, StatusCode, Version};
+use http::{Method, Request, Response, StatusCode, Version};
 use http_server::{Router, HttpServer};
 use async_executor::Executor;
 use simple_error::SimpleResult;
@@ -24,7 +24,9 @@ async fn async_main(executor: Arc<Executor<'static>>) -> SimpleResult<()> {
 
     // build router
     let mut router = Router::new(executor.clone());
-    router.add_route("GET", "/", Arc::new(move |executor, req| Box::pin(get_index(executor, req)))); // TODO: get rid of this non-async wrapper?
+    router.add_routes(vec![
+        (Method::GET, "/", Arc::new(move |executor, req| Box::pin(get_index(executor, req)))), // TODO: get rid of this non-async wrapper?
+    ]);
     let router = Arc::new(router);
 
     // run server

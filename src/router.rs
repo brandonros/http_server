@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_executor::Executor;
-use http::{Request, Response, StatusCode, Version};
+use http::{Method, Request, Response, StatusCode, Version};
 use simple_error::SimpleResult;
 
 use crate::types::BoxFuture;
@@ -22,7 +22,13 @@ impl Router {
         }
     }
 
-    pub fn add_route(&mut self, method: &str, path: &str, handler: Arc<RouteHandler>) {
+    pub fn add_routes(&mut self, routes: Vec<(Method, &str, Arc<RouteHandler>)>) {
+        for (method, path, handler) in routes {
+            self.add_route(method, path, handler);
+        }
+    }
+
+    pub fn add_route(&mut self, method: Method, path: &str, handler: Arc<RouteHandler>) {
         let key = format!("{method}:{path}");
         self.routes.insert(key, handler);
     }
