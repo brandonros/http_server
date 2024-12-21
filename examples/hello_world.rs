@@ -30,7 +30,7 @@ async fn async_main(executor: Arc<Executor<'static>>) -> SimpleResult<()> {
     let router = Arc::new(router);
 
     // run server
-    HttpServer::run_server(executor, host, port, router).await
+    HttpServer::run_server(executor, host, port, router, None).await
 }
 
 fn main() -> SimpleResult<()> {

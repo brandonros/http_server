@@ -3,17 +3,62 @@ use async_executor::Executor;
 use futures_lite::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, AsyncReadExt};
 use http::{Method, Request, Uri, Version};
 use simple_error::{box_err, SimpleResult};
-use std::{
-    net::{TcpListener, ToSocketAddrs},
-    str::FromStr,
-    sync::Arc,
-};
+use async_tls::TlsAcceptor;
+use rustls::{Certificate, PrivateKey, ServerConfig};
+use std::net::{TcpListener, TcpStream, ToSocketAddrs as _};
+use std::str::FromStr as _;
+use std::sync::Arc;
 
+use crate::async_connection::AsyncConnection;
 use crate::router::Router;
 
-pub struct HttpServer;
+pub struct HttpServer {
+    tls_acceptor: Option<TlsAcceptor>,
+}
 
 impl HttpServer {
+    pub fn new() -> Self {
+        Self { tls_acceptor: None }
+    }
+
+    pub fn with_tls(cert_pem: &str, key_pem: &str) -> SimpleResult<Self> {
+        // Load certificate from string
+        let mut cert_reader = std::io::BufReader::new(std::io::Cursor::new(cert_pem));
+        let cert = rustls_pemfile::certs(&mut cert_reader)?
+            .into_iter()
+            .map(Certificate)
+            .collect();
+
+        // Load private key from string
+        let mut key_reader = std::io::BufReader::new(std::io::Cursor::new(key_pem));
+        let key = rustls_pemfile::pkcs8_private_keys(&mut key_reader)?
+            .into_iter()
+            .map(PrivateKey)
+            .next()
+            .ok_or("No private key found")?;
+
+        // Create TLS config
+        let config = ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(cert, key)?;
+
+        Ok(Self {
+            tls_acceptor: Some(TlsAcceptor::from(Arc::new(config))),
+        })
+    }
+
+    async fn accept_connection(&self, stream: Async<TcpStream>) -> SimpleResult<Box<dyn AsyncConnection>> {
+        if let Some(tls_acceptor) = &self.tls_acceptor {
+            // Handle HTTPS connection
+            let tls_stream = tls_acceptor.accept(stream).await?;
+            Ok(Box::new(tls_stream))
+        } else {
+            // Handle HTTP connection
+            Ok(Box::new(stream))
+        }
+    }
+
     async fn read_http_request<S: AsyncRead + AsyncWrite + Unpin>(
         stream: &mut S,
     ) -> SimpleResult<Request<Vec<u8>>> {
@@ -112,34 +157,49 @@ impl HttpServer {
         Ok(())
     }
 
-    pub async fn run_server(executor: Arc<Executor<'static>>, host: &str, port: u16, router: Arc<Router>) -> SimpleResult<()> {
+    pub async fn run_server(
+        executor: Arc<Executor<'static>>,
+        host: &str,
+        port: u16,
+        router: Arc<Router>,
+        tls_config: Option<(String, String)>,
+    ) -> SimpleResult<()> {
+        let server = if let Some((cert_path, key_path)) = tls_config {
+            Self::with_tls(&cert_path, &key_path)?
+        } else {
+            Self::new()
+        };
+
         // bind listener
         let addr = format!("{host}:{port}")
             .to_socket_addrs()?
             .next()
-            .ok_or(box_err!("Failed to build host"))?;
+            .ok_or("Failed to build host")?;
         let listener = Async::<TcpListener>::bind(addr)?;
 
         // handle request
         loop {
             let (stream, _) = listener.accept().await?;
             log::info!("accepted new connection");
-
-            // Spawn a task to handle each client connection
-            let task = executor.spawn({
-                let router = router.clone();
-                async move {
-                    match Self::handle_request(router, stream).await {
-                        Ok(()) => (),
-                        Err(err) => {
-                            log::error!("error handling request err = {err:?}");
-                        },
-                    }
+        
+            match server.accept_connection(stream).await {
+                Ok(connection) => {
+                    let task = executor.spawn({
+                        let router = router.clone();
+                        async move {
+                            if let Err(err) = Self::handle_request(router, connection).await {
+                                log::error!("error handling request err = {err:?}");
+                            }
+                        }
+                    });
+                    task.detach();
                 }
-            });
-
-            // run in background
-            task.detach();
+                Err(err) => {
+                    log::warn!("Failed to establish connection: {:?}", err);
+                    // Continue accepting new connections
+                    continue;
+                }
+            }
         }
     }
 }
