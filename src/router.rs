@@ -39,8 +39,10 @@ impl Router {
         let key = format!("{method}:{path}");
         log::info!("request key = {key}");
         if let Some(handler) = self.routes.get(&key) {
+            log::debug!("request = {request:02x?}");
             match handler(self.executor.clone(), request).await {
                 Ok(response) => {
+                    log::debug!("response = {response:02x?}");
                     Ok(response)
                 },
                 Err(err) => {
