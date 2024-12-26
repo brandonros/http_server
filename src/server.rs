@@ -138,22 +138,38 @@ impl HttpServer {
     ) -> SimpleResult<()> {
         // read request
         let request = Self::read_http_request(&mut stream).await?;
-
+    
         // Route requests by method + path
         let response = router.route(request).await?;
-
-        // Serialize and send the response
-        let response_str = format!(
-            "{:?} {} {}\r\nContent-Length: {}\r\n\r\n{}",
+    
+        // Write the status line
+        let status_line = format!(
+            "{:?} {} {}\r\n",
             response.version(),
-            response.status(),
-            response.status().canonical_reason().unwrap_or(""),
-            response.body().len(),
-            response.body()
+            response.status().as_str(),
+            response.status().canonical_reason().unwrap_or("")
         );
-
-        stream.write_all(response_str.as_bytes()).await?;
+        stream.write_all(status_line.as_bytes()).await?;
+    
+        // Write headers
+        for (name, value) in response.headers() {
+            let header_line = format!("{}: {}\r\n", name, value.to_str()?);
+            stream.write_all(header_line.as_bytes()).await?;
+        }
+    
+        // Add Content-Length header if not present
+        if !response.headers().contains_key("content-length") {
+            let content_length = format!("Content-Length: {}\r\n", response.body().len());
+            stream.write_all(content_length.as_bytes()).await?;
+        }
+    
+        // Write the empty line that separates headers from body
+        stream.write_all(b"\r\n").await?;
+    
+        // Write the body
+        stream.write_all(response.body()).await?;
         stream.flush().await?;
+        
         Ok(())
     }
 
