@@ -167,7 +167,7 @@ impl HttpServer {
         stream.write_all(b"\r\n").await?;
     
         // Write the body
-        stream.write_all(response.body()).await?;
+        stream.write_all(response.body().as_bytes()).await?;
         stream.flush().await?;
         
         Ok(())
