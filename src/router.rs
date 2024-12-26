@@ -35,7 +35,7 @@ impl Router {
 
     pub async fn route(&self, request: Request<Vec<u8>>) -> SimpleResult<Response<String>> {
         let method = request.method().as_str();
-        let path = request.uri().to_string();
+        let path = request.uri().path().to_string();
         let key = format!("{method}:{path}");
         log::info!("request key = {key}");
         if let Some(handler) = self.routes.get(&key) {
