@@ -65,8 +65,6 @@ impl Router {
     pub async fn route(&self, request: Request<Vec<u8>>) -> SimpleResult<Response<String>> {
         let method = request.method().clone();
         let path = request.uri().path().to_string();
-
-        log::debug!("Attempting to route: ({:?}, {})", method, path);
         
         // Get all routes for this method
         for ((route_method, _), route_info) in self.routes.iter() {
@@ -74,9 +72,7 @@ impl Router {
                 continue;
             }
 
-            log::debug!("Checking pattern: {}", route_info.pattern.as_str());
             if let Some(captures) = route_info.pattern.captures(&path) {
-                log::debug!("Path matched! Captures: {:?}", captures);
                 let mut params = HashMap::new();
                 for (i, param_name) in route_info.path_params.iter().enumerate() {
                     if let Some(value) = captures.get(i + 1) {
