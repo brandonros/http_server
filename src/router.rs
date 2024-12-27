@@ -18,7 +18,7 @@ struct RouteInfo {
 #[derive(Default)]
 pub struct Router {
     executor: Arc<Executor<'static>>,
-    routes: HashMap<String, RouteInfo>,
+    routes: HashMap<(Method, String), RouteInfo>,
 }
 
 impl Router {
@@ -36,8 +36,9 @@ impl Router {
     }
 
     pub fn add_route(&mut self, method: Method, path: &str, handler: Arc<RouteHandler>) {
-        let key = format!("{method}");
+        let key = (method, path.to_string());
         
+        log::debug!("Adding route: {:?}", key);
         let mut path_params = Vec::new();
         let pattern_str = path
             .split('/')
@@ -62,12 +63,20 @@ impl Router {
     }
 
     pub async fn route(&self, request: Request<Vec<u8>>) -> SimpleResult<Response<String>> {
-        let method = request.method().as_str();
+        let method = request.method().clone();
         let path = request.uri().path().to_string();
-        let method_key = method.to_string();
 
-        if let Some(route_info) = self.routes.get(&method_key) {
+        log::debug!("Attempting to route: ({:?}, {})", method, path);
+        
+        // Get all routes for this method
+        for ((route_method, _), route_info) in self.routes.iter() {
+            if route_method != &method {
+                continue;
+            }
+
+            log::debug!("Checking pattern: {}", route_info.pattern.as_str());
             if let Some(captures) = route_info.pattern.captures(&path) {
+                log::debug!("Path matched! Captures: {:?}", captures);
                 let mut params = HashMap::new();
                 for (i, param_name) in route_info.path_params.iter().enumerate() {
                     if let Some(value) = captures.get(i + 1) {
@@ -78,14 +87,14 @@ impl Router {
                 let mut request = request;
                 request.extensions_mut().insert(params);
 
-                match (route_info.handler)(self.executor.clone(), request).await {
+                return match (route_info.handler)(self.executor.clone(), request).await {
                     Ok(response) => {
-                        log::debug!("response = {response:02x?}");
+                        log::debug!("Response: {:?}", response);
                         Ok(response)
                     },
                     Err(err) => {
-                        log::error!("controller error key = {method_key} err = {err:?}");
-                        let response_body = format!("{err:?}");
+                        log::error!("Controller error: {:?}", err);
+                        let response_body = format!("{:?}", err);
                         Ok(Response::builder()
                             .status(StatusCode::INTERNAL_SERVER_ERROR)
                             .version(Version::HTTP_11)
@@ -94,28 +103,19 @@ impl Router {
                             .body(response_body)
                             .unwrap())
                     },
-                }
-            } else {
-                log::warn!("route not found key = {method_key}");
-                let response_body = "Not Found".to_string();
-                Ok(Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .version(Version::HTTP_11)
-                    .header("Content-Type", "text/plain")
-                    .header("Content-Length", response_body.len().to_string())
-                    .body(response_body)
-                    .unwrap())
+                };
             }
-        } else {
-            log::warn!("route not found key = {method_key}");
-            let response_body = "Not Found".to_string();
-            Ok(Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .version(Version::HTTP_11)
-                .header("Content-Type", "text/plain")
-                .header("Content-Length", response_body.len().to_string())
-                .body(response_body)
-                .unwrap())
         }
+
+        // No matching route found
+        log::warn!("Route not found: ({:?}, {})", method, path);
+        let response_body = "Not Found".to_string();
+        Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .version(Version::HTTP_11)
+            .header("Content-Type", "text/plain")
+            .header("Content-Length", response_body.len().to_string())
+            .body(response_body)
+            .unwrap())
     }
 }
