@@ -47,10 +47,13 @@ impl Router {
                 },
                 Err(err) => {
                     log::error!("controller error key = {key} err = {err:?}");
+                    let response_body = format!("{err:?}");
                     Ok(Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
                         .version(Version::HTTP_11)
-                        .body(format!("{err:?}"))
+                        .header("Content-Type", "text/plain")
+                        .header("Content-Length", response_body.len().to_string())
+                        .body(response_body)
                         .unwrap())
                 },
             }
