@@ -17,6 +17,8 @@ simple_error = { git = "https://github.com/brandonros/simple_error.git" }
 async-tls = "0.13.0"
 rustls = "0.21.0"
 rustls-pemfile = "1.0.0"
+# regex
+regex = "1.11.1"
 
 [dev-dependencies]
 # logging
